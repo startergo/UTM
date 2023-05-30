@@ -419,6 +419,7 @@ jobs:
       - name: Package for Release
         run: |
           tar -xf UTM.xcarchive.tgz
+          sudo launchctl unload /System/Library/LaunchDaemons/com.apple.diskarbitrationd.plist
           ./scripts/package_mac.sh developer-id UTM.xcarchive . "$SIGNING_TEAM_ID" "$PROFILE_UUID" "$HELPER_PROFILE_UUID" "$LAUNCHER_PROFILE_UUID"
         env:
           SIGNING_TEAM_ID: ${{ secrets.SIGNING_TEAM_ID }}
