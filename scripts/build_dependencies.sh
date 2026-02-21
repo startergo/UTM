@@ -775,12 +775,14 @@ build_mesa_host () {
     HOST_PATH="$(brew --prefix llvm)/bin:$CLEAN_PATH"
     LLVM_PREFIX="$(brew --prefix llvm)"
     env -i PATH="$HOST_PATH" PKG_CONFIG_PATH="$LLVM_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH" \
+        LLVM_CONFIG="$LLVM_PREFIX/bin/llvm-config" \
         meson host_build --prefix="$PREFIX/host" --buildtype=release \
-        -Dllvm=enabled -Dllvm-config="$LLVM_PREFIX/bin/llvm-config" \
-        -Dstrip=true -Dopengl=false -Dgallium-drivers= -Dvulkan-drivers= \
+        -Dllvm=enabled -Dstrip=true -Dopengl=false -Dgallium-drivers= -Dvulkan-drivers= \
         -Dmesa-clc=auto
-    env -i PATH="$HOST_PATH" meson compile -C host_build -j $NCPU
-    env -i PATH="$HOST_PATH" meson install -C host_build
+    env -i PATH="$HOST_PATH" LLVM_CONFIG="$LLVM_PREFIX/bin/llvm-config" \
+        meson compile -C host_build -j $NCPU
+    env -i PATH="$HOST_PATH" LLVM_CONFIG="$LLVM_PREFIX/bin/llvm-config" \
+        meson install -C host_build
 
     popd
 }
