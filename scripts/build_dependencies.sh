@@ -770,6 +770,7 @@ build_mesa_host () {
     HOST_PATH="$(brew --prefix llvm)/bin:$CLEAN_PATH"
     LLVM_PREFIX="$(brew --prefix llvm)"
     env -i PATH="$HOST_PATH" PKG_CONFIG_PATH="$LLVM_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH" \
+        LLVM_CONFIG="$LLVM_PREFIX/bin/llvm-config" \
         meson host_build --prefix="$PREFIX/host" --buildtype=release \
         -Dllvm=enabled -Dstrip=true -Dopengl=false -Dgallium-drivers= -Dvulkan-drivers= \
         -Dmesa-clc=auto
