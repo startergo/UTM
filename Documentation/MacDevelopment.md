@@ -69,7 +69,41 @@ You can build UTM with the script:
 
 ### Packaging
 
-Artifacts built with `build_utm.sh` (includes GitHub Actions artifacts) must be re-signed before it can be used. To properly use all features, you must be a paid Apple Developer with access to a provisioning profile with the Hypervisor entitlements. However, non-registered developers can build "unsigned" packages which lack certain features (such as USB and network bridging support).
+**Important:** Artifacts from GitHub Actions (`.xcarchive` files) **cannot be used directly**. They must be packaged using `package_mac.sh` before installation.
+
+Artifacts built with `build_utm.sh` (includes GitHub Actions artifacts) must be re-signed before they can be used. To properly use all features, you must be a paid Apple Developer with access to a provisioning profile with the Hypervisor entitlements. However, non-registered developers can build "unsigned" packages which lack certain features (such as USB and network bridging support).
+
+#### Using GitHub Actions Artifacts
+
+If you downloaded UTM artifacts from GitHub Actions:
+
+1. **Download the artifact** - Download the `UTM-*.xcarchive.tgz` file from the Actions run
+2. **Extract the archive** - Double-click or run: `tar -xf UTM-*.xcarchive.tgz`
+3. **Package into DMG** (required step):
+   ```sh
+   # Navigate to your UTM source directory
+   cd /path/to/UTM
+
+   # Package the xcarchive into a usable DMG
+   ./scripts/package_mac.sh unsigned /path/to/UTM.xcarchive ~/Desktop
+   ```
+   This creates `UTM.dmg` on your Desktop.
+4. **Install UTM**:
+   ```sh
+   # Mount the DMG (it will open automatically)
+   open ~/Desktop/UTM.dmg
+
+   # Or manually mount and copy:
+   hdiutil attach ~/Desktop/UTM.dmg
+   cp -R /Volumes/UTM/UTM.app /Applications/
+   hdiutil detach /Volumes/UTM
+   ```
+5. **Fix ownership** (if needed):
+   ```sh
+   sudo chown -R $(whoami):staff /Applications/UTM.app
+   ```
+
+**Do not** attempt to run UTM directly from the `.xcarchive` - it will fail with code signature errors.
 
 #### Unsigned packages
 
@@ -106,6 +140,38 @@ By default, Xcode will build UTM unsigned (lacking USB and bridged networking fe
 If you have a registered developer account with access to Hypervisor entitlements, you should create a `CodeSigning.xcconfig` file with the proper values (see `CodeSigning.xcconfig.sample`). Make sure to set `DEVELOPER_ACCOUNT_VM_ACCESS = YES`.
 
 Note that due to a macOS bug, you may get a crash when launching a VM with the debugger attached. The workaround is to start UTM with the debugger detached and attach the debugger with Debug -> Attach to Process after launching a VM. Once you do that, you can start additional VMs without any issues with the debugger.
+
+## Troubleshooting
+
+### "Failed to change current directory" error
+
+If you see this error when starting a VM:
+1. Ensure UTM was properly packaged using `package_mac.sh` (see above)
+2. Check that UTM is installed in `/Applications` (not run from Downloads or another location)
+3. Grant Full Disk Access to UTM in System Settings → Privacy & Security
+4. If using directory sharing, ensure the shared path exists and is accessible
+
+### Code signature errors
+
+If you see "Code Signature Invalid" or similar errors:
+- You are trying to run UTM directly from the `.xcarchive`. You must package it first using `package_mac.sh`.
+- See "Using GitHub Actions Artifacts" above for the correct procedure.
+
+### Permission errors after installation
+
+If UTM shows ownership by `admin` instead of your user:
+```sh
+sudo chown -R $(whoami):staff /Applications/UTM.app
+```
+
+### Unsigned build limitations
+
+Unsigned builds lack the following features:
+- USB device forwarding
+- Bridged networking mode
+- Some advanced QEMU features
+
+These features require a paid Apple Developer account and proper code signing with Hypervisor entitlements.
 
 [1]: https://github.com/utmapp/UTM/actions?query=event%3Arelease+workflow%3ABuild
 [2]: https://brew.sh
