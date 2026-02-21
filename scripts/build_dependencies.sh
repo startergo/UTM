@@ -786,7 +786,7 @@ build_mesa_host () {
 build_vulkan_drivers () {
     mkdir -p "$PREFIX/share/vulkan/icd.d"
     build_mesa_host
-    meson_darwin_build $MESA_REPO -Dmesa-clc=auto -Dgallium-drivers= -Dvulkan-drivers=kosmickrisp -Dplatforms=macos
+    meson_darwin_build $MESA_REPO -Dgallium-drivers= -Dvulkan-drivers=kosmickrisp -Dplatforms=macos
     patch_vulkan_icd "$PREFIX/share/vulkan/icd.d/kosmickrisp_mesa_icd.$ARCH.json"
     mv "$PREFIX/share/vulkan/icd.d/kosmickrisp_mesa_icd.$ARCH.json" "$PREFIX/share/vulkan/icd.d/kosmickrisp_mesa_icd.json"
     build_moltenvk
