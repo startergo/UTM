@@ -99,7 +99,12 @@ download () {
         echo "${GREEN}$TARGET already downloaded! Run with -d to force re-download.${NC}"
     else
         echo "${GREEN}Downloading ${URL}${NC}"
-        curl -L -O "$URL"
+        # Use GitHub token for authenticated downloads if available (for release assets)
+        if [[ "$URL" == github.com/* ]] && [ -n "$GITHUB_TOKEN" ]; then
+            curl -L -H "Authorization: token $GITHUB_TOKEN" -o "$FILE" "$URL"
+        else
+            curl -L -O "$URL"
+        fi
         mv "$FILE" "$TARGET"
     fi
     if [ -d "$DIR" ]; then

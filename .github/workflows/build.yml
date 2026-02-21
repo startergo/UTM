@@ -100,6 +100,7 @@ jobs:
         run: ./scripts/build_dependencies.sh -p ${{ matrix.platform }} -a ${{ matrix.arch }}
         env:
           NCPU: ${{ endsWith(matrix.platform, '-tci') && '1' || '0' }} # limit 1 CPU for TCI build due to memory issues, 0 = unlimited for other builds
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Compress Sysroot
         if: steps.cache-sysroot.outputs.cache-matched-key == '' || github.event_name == 'release' || github.event.inputs.test_release == 'true' || github.event.inputs.rebuild_sysroot == 'true'
         run: tar -acf sysroot.tgz sysroot*
