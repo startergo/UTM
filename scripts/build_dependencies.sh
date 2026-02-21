@@ -776,7 +776,7 @@ build_mesa_host () {
     env -i PATH="$HOST_PATH" \
         meson host_build --prefix="$PREFIX/host" --buildtype=release \
         -Dllvm=auto -Dstrip=true -Dopengl=false -Dgallium-drivers= -Dvulkan-drivers= \
-        -Dmesa-clc=auto
+        -Dmesa-clc=auto -Dplatforms= -Dglx=disabled -Degl=disabled -Dgbm=disabled
     env -i PATH="$HOST_PATH" meson compile -C host_build -j $NCPU
     env -i PATH="$HOST_PATH" meson install -C host_build
 
