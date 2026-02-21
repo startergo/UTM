@@ -82,16 +82,19 @@ jobs:
         shell: bash
         run: |
           echo "/usr/local/opt/bison/bin:/opt/homebrew/opt/bison/bin" >> $GITHUB_PATH
+      - name: Install Build Tools
+        run: |
+          brew install bison pkg-config gettext glib-utils libgpg-error nasm meson cmake 2>/dev/null || true
+          rm -f /usr/local/lib/pkgconfig/*.pc
       - name: Install Python Requirements
         run: |
           pip3 install --break-system-packages --user six pyparsing pyyaml setuptools distlib mako
-      - name: Install Build Requirements
+      - name: Install XCPretty
         if: (steps.cache-sysroot.outputs.cache-matched-key == '' || github.event.inputs.rebuild_sysroot == 'true') && needs.configuration.outputs.runner == env.RUNNER_IMAGE
         run: |
-          brew uninstall cmake
-          brew install bison pkg-config gettext glib-utils libgpg-error nasm make meson cmake
+          brew uninstall cmake || true
+          brew install cmake || true
           gem install --user-install xcpretty
-          rm -f /usr/local/lib/pkgconfig/*.pc
       - name: Build Sysroot
         if: steps.cache-sysroot.outputs.cache-matched-key == '' || github.event.inputs.rebuild_sysroot == 'true'
         run: ./scripts/build_dependencies.sh -p ${{ matrix.platform }} -a ${{ matrix.arch }}
