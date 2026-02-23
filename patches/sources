@@ -39,7 +39,7 @@ LIBUCONTEXT_COMMIT="9b1d8f01a6e99166f9808c79966abe10786de8b6"
 
 # Source files for GPU acceleration
 WEBKIT_REPO="https://github.com/utmapp/WebKit.git"
-WEBKIT_COMMIT="e9f29559b009011a1ee420d67e1994d3d5295f1a"
+WEBKIT_COMMIT="bb6b690f9fb7259c63555645106c3a2b7f682463"
 WEBKIT_SUBDIRS="Source/ThirdParty/ANGLE Configurations Tools/ccache"
 EPOXY_REPO="https://github.com/utmapp/libepoxy.git"
 EPOXY_COMMIT="5014658f79e4d6872a1ad6754da9098ccd9d4fc5"
@@ -49,8 +49,8 @@ VIRGLRENDERER_REPO="https://github.com/utmapp/virglrenderer.git"
 VIRGLRENDERER_COMMIT="3eb654b9d38de19af5e1125142e0c2789796c418"
 MESA_REPO="https://gitlab.freedesktop.org/osy/mesa.git"
 MESA_COMMIT="79bc850d884a1307356ff61c017e58901b90c7e2"
-MOLTENVK_REPO="https://github.com/KhronosGroup/MoltenVK.git"
-MOLTENVK_COMMIT="bf60f60d0805e9b3ab989cfc1b69f780f96fd123"
+MOLTENVK_REPO="https://github.com/utmapp/MoltenVK.git"
+MOLTENVK_COMMIT="111c14f3abf5c00118fc7a5b00c92d7abbf40f62"
 
 # Decompiled Hypervisor for iOS
 HYPERVISOR_REPO="https://github.com/utmapp/Hypervisor.git"
