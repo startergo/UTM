@@ -71,6 +71,8 @@ check_env () {
     brew --prefix spirv-llvm-translator >/dev/null 2>&1 || { echo >&2 "${RED}You must install 'spirv-llvm-translator' from Homebrew.${NC}"; exit 1; }
     brew --prefix spirv-tools >/dev/null 2>&1 || { echo >&2 "${RED}You must install 'spirv-tools' from Homebrew.${NC}"; exit 1; }
     brew --prefix libclc >/dev/null 2>&1 || { echo >&2 "${RED}You must install 'libclc' from Homebrew (brew install libclc).${NC}"; exit 1; }
+    brew --prefix libxcb >/dev/null 2>&1 || { echo >&2 "${RED}You must install 'libxcb' from Homebrew.${NC}"; exit 1; }
+    brew --prefix libxrandr >/dev/null 2>&1 || { echo >&2 "${RED}You must install 'libxrandr' from Homebrew.${NC}"; exit 1; }
     command -v python3 >/dev/null 2>&1 || { echo >&2 "${RED}You must install 'python3' on your host machine.${NC}"; exit 1; }
     python_module_test six >/dev/null 2>&1 || { echo >&2 "${RED}'six' not found in your Python 3 installation.${NC}"; exit 1; }
     python_module_test pyparsing >/dev/null 2>&1 || { echo >&2 "${RED}'pyparsing' not found in your Python 3 installation.${NC}"; exit 1; }
