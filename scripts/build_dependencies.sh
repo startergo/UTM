@@ -228,7 +228,12 @@ generate_meson_cross() {
     echo "# Automatically generated - do not modify" > $cross
     echo "[properties]" >> $cross
     echo "needs_exe_wrapper = true" >> $cross
-    echo "pkg_config_path = ['$(brew --prefix libclc)/lib/pkgconfig', '$(brew --prefix libclc)/share/pkgconfig', '/opt/homebrew/lib/pkgconfig', '/opt/homebrew/share/pkgconfig']" >> $cross
+    # Set pkg_config_path: include homebrew for macOS only, exclude for iOS/visionOS
+    if [[ "$PLATFORM" == macos* ]]; then
+        echo "pkg_config_path = ['$(brew --prefix libclc)/lib/pkgconfig', '$(brew --prefix libclc)/share/pkgconfig', '/opt/homebrew/lib/pkgconfig', '/opt/homebrew/share/pkgconfig']" >> $cross
+    else
+        echo "pkg_config_path = []" >> $cross
+    fi
     echo "[built-in options]" >> $cross
     echo "c_args = [${CFLAGS:+$(meson_quote $CFLAGS)}]" >> $cross
     echo "cpp_args = [${CXXFLAGS:+$(meson_quote $CXXFLAGS)}]" >> $cross
@@ -533,11 +538,17 @@ build () {
     cd "$DIR"
     if [ -z "$REBUILD" ]; then
         echo "${GREEN}Configuring ${NAME}...${NC}"
-        # Include both locally built packages ($PREFIX) and homebrew packages
+        # For macOS, include homebrew paths; for iOS/visionOS, exclude them
         # Use homebrew pkg-config for configure (old built one is buggy)
-        PATH="/opt/homebrew/bin:$PATH" \
-        PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig" \
-        ./configure --prefix="$PREFIX" --host="$CHOST" $@
+        if [[ "$PLATFORM" == macos* ]]; then
+            PATH="/opt/homebrew/bin:$PATH" \
+            PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig" \
+            ./configure --prefix="$PREFIX" --host="$CHOST" $@
+        else
+            PATH="/opt/homebrew/bin:$PATH" \
+            PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig" \
+            ./configure --prefix="$PREFIX" --host="$CHOST" $@
+        fi
     fi
     echo "${GREEN}Building ${NAME}...${NC}"
     make -j$NCPU
@@ -1099,13 +1110,19 @@ CFLAGS="$CFLAGS -arch $ARCH -isysroot $SDKROOT -I$PREFIX/include -F$PREFIX/Frame
 CPPFLAGS="$CPPFLAGS -arch $ARCH -isysroot $SDKROOT -I$PREFIX/include -F$PREFIX/Frameworks $CFLAGS_TARGET $DEBUG_FLAGS"
 CXXFLAGS="$CXXFLAGS -arch $ARCH -isysroot $SDKROOT -I$PREFIX/include -F$PREFIX/Frameworks $CFLAGS_TARGET $DEBUG_FLAGS"
 OBJCFLAGS="$OBJCFLAGS -arch $ARCH -isysroot $SDKROOT -I$PREFIX/include -F$PREFIX/Frameworks $CFLAGS_TARGET $DEBUG_FLAGS"
-LDFLAGS="$LDFLAGS -arch $ARCH -isysroot $SDKROOT -L$PREFIX/lib -L/opt/homebrew/lib -F$PREFIX/Frameworks $CFLAGS_TARGET $DEBUG_FLAGS"
+# For macOS, include homebrew lib paths; for iOS/visionOS, exclude them
+if [[ "$PLATFORM" == macos* ]]; then
+    LDFLAGS="$LDFLAGS -arch $ARCH -isysroot $SDKROOT -L$PREFIX/lib -L/opt/homebrew/lib -F$PREFIX/Frameworks $CFLAGS_TARGET $DEBUG_FLAGS"
+    export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
+else
+    LDFLAGS="$LDFLAGS -arch $ARCH -isysroot $SDKROOT -L$PREFIX/lib -F$PREFIX/Frameworks $CFLAGS_TARGET $DEBUG_FLAGS"
+    export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
+fi
 export CFLAGS
 export CPPFLAGS
 export CXXFLAGS
 export OBJCFLAGS
 export LDFLAGS
-export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
 
 check_env
 echo "${GREEN}Starting build for ${PLATFORM_FAMILY_NAME} ${ARCH} [${NCPU} jobs]${NC}"
