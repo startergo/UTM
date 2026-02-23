@@ -573,10 +573,14 @@ meson_cross_build () {
     if [ -z "$REBUILD" ]; then
         rm -rf utm_build
         echo "${GREEN}Configuring ${NAME}...${NC}"
-        # Include libclc, homebrew, and $PREFIX paths for locally built packages
-        export PKG_CONFIG_PATH="$(brew --prefix libclc)/lib/pkgconfig:$(brew --prefix libclc)/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:$PREFIX/host/lib/pkgconfig:$PREFIX/host/share/pkgconfig:$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
-        # Use homebrew pkg-config for meson (old built one is buggy), and include LLVM for llvm-config
-        PATH="$(brew --prefix llvm)/bin:/opt/homebrew/bin:$PATH" \
+        # Include libclc, and optionally homebrew paths (for macOS only, not iOS)
+        if [[ "$PLATFORM" == macos* ]]; then
+            export PKG_CONFIG_PATH="$(brew --prefix libclc)/lib/pkgconfig:$(brew --prefix libclc)/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:$PREFIX/host/lib/pkgconfig:$PREFIX/host/share/pkgconfig:$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
+            PATH="$(brew --prefix llvm)/bin:/opt/homebrew/bin:$PATH"
+        else
+            export PKG_CONFIG_PATH="$PREFIX/host/lib/pkgconfig:$PREFIX/host/share/pkgconfig:$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
+            PATH="$(brew --prefix llvm)/bin:$PATH"
+        fi
         meson utm_build --prefix="$PREFIX" --buildtype="$buildtype" --cross-file "$MESON_CROSS" "$@"
     fi
     echo "${GREEN}Building ${NAME}...${NC}"
