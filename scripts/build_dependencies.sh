@@ -540,13 +540,14 @@ build () {
         echo "${GREEN}Configuring ${NAME}...${NC}"
         # For macOS, include homebrew paths; for iOS/visionOS, exclude them
         # Use homebrew pkg-config for configure (old built one is buggy)
+        # PKG_CONFIG_LIBDIR overrides default search paths completely
         if [[ "$PLATFORM" == macos* ]]; then
             PATH="/opt/homebrew/bin:$PATH" \
             PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig" \
             ./configure --prefix="$PREFIX" --host="$CHOST" $@
         else
             PATH="/opt/homebrew/bin:$PATH" \
-            PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig" \
+            PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig" \
             ./configure --prefix="$PREFIX" --host="$CHOST" $@
         fi
     fi
@@ -585,11 +586,13 @@ meson_cross_build () {
         rm -rf utm_build
         echo "${GREEN}Configuring ${NAME}...${NC}"
         # Include libclc, and optionally homebrew paths (for macOS only, not iOS)
+        # Use PKG_CONFIG_LIBDIR to completely override default search paths for iOS/visionOS
         if [[ "$PLATFORM" == macos* ]]; then
             export PKG_CONFIG_PATH="$(brew --prefix libclc)/lib/pkgconfig:$(brew --prefix libclc)/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:$PREFIX/host/lib/pkgconfig:$PREFIX/host/share/pkgconfig:$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
             PATH="$(brew --prefix llvm)/bin:/opt/homebrew/bin:$PATH"
         else
-            export PKG_CONFIG_PATH="$PREFIX/host/lib/pkgconfig:$PREFIX/host/share/pkgconfig:$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
+            export PKG_CONFIG_LIBDIR="$PREFIX/host/lib/pkgconfig:$PREFIX/host/share/pkgconfig:$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
+            unset PKG_CONFIG_PATH
             PATH="$(brew --prefix llvm)/bin:$PATH"
         fi
         meson utm_build --prefix="$PREFIX" --buildtype="$buildtype" --cross-file "$MESON_CROSS" "$@"
@@ -1116,7 +1119,8 @@ if [[ "$PLATFORM" == macos* ]]; then
     export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
 else
     LDFLAGS="$LDFLAGS -arch $ARCH -isysroot $SDKROOT -L$PREFIX/lib -F$PREFIX/Frameworks $CFLAGS_TARGET $DEBUG_FLAGS"
-    export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
+    export PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
+    unset PKG_CONFIG_PATH
 fi
 export CFLAGS
 export CPPFLAGS
