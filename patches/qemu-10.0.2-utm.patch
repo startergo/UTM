@@ -249,6 +249,32 @@ index 275c4ba943..ebed824500 100755
 -- 
 2.41.0
 
+From 9d171f4f6f7b7f2d7d2c8e5a34c26ec00d761b22 Mon Sep 17 00:00:00 2001
+From: osy <osy@turing.llc>
+Date: Sat, 21 Feb 2026 20:00:00 -0800
+Subject: [PATCH] ui/sdl2: skip qemu_main assignment for shared library build
+
+---
+ ui/sdl2.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/ui/sdl2.c b/ui/sdl2.c
+index c1bf8ba0dc..8c367adfdd 100644
+--- a/ui/sdl2.c
++++ b/ui/sdl2.c
+@@ -942,7 +942,9 @@ static void sdl2_display_init(DisplayState *ds, DisplayOptions *opts)
+     atexit(sdl_cleanup);
+ 
+     /* SDL's event polling (in dpy_refresh) must happen on the main thread. */
++#ifndef CONFIG_SHARED_LIBRARY_BUILD
+     qemu_main = NULL;
++#endif
+ }
+ 
+ static QemuDisplay qemu_display_sdl2 = {
+-- 
+2.41.0
+
 From 35ba52817dbea01821b429737e989bc54a14d411 Mon Sep 17 00:00:00 2001
 From: osy <osy@turing.llc>
 Date: Tue, 22 Jul 2025 10:13:34 -0700
@@ -1121,7 +1147,7 @@ diff --git a/ui/sdl2-gl.c b/ui/sdl2-gl.c
 index b164fb6b28..1d8ff3fab0 100644
 --- a/ui/sdl2-gl.c
 +++ b/ui/sdl2-gl.c
-@@ -201,15 +201,14 @@ void sdl2_gl_scanout_disable(DisplayChangeListener *dcl)
+@@ -201,19 +201,15 @@ void sdl2_gl_scanout_disable(DisplayChangeListener *dcl)
  
  void sdl2_gl_scanout_texture(DisplayChangeListener *dcl,
                               uint32_t backing_id,
@@ -1142,7 +1168,11 @@ index b164fb6b28..1d8ff3fab0 100644
  
      assert(scon->opengl);
  
-@@ -227,7 +226,7 @@ void sdl2_gl_scanout_texture(DisplayChangeListener *dcl,
+-    GLuint backing_texture = backing_borrow(backing_id, &backing_y_0_top,
+-                                            &backing_width, &backing_height,
+-                                            &d3d_tex2d);
+ 
+@@ -227,7 +222,7 @@ void sdl2_gl_scanout_texture(DisplayChangeListener *dcl,
  
      sdl2_set_scanout_mode(scon, true);
      egl_fb_setup_for_tex(&scon->guest_fb, backing_width, backing_height,

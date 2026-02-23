@@ -68,6 +68,9 @@ python_module_test () {
 check_env () {
     command -v brew >/dev/null 2>&1 || { echo >&2 "${RED}Homebrew is required to be installed.${NC}"; exit 1; }
     brew --prefix llvm >/dev/null 2>&1 || { echo >&2 "${RED}You must install 'llvm' from Homebrew.${NC}"; exit 1; }
+    brew --prefix spirv-llvm-translator >/dev/null 2>&1 || { echo >&2 "${RED}You must install 'spirv-llvm-translator' from Homebrew.${NC}"; exit 1; }
+    brew --prefix spirv-tools >/dev/null 2>&1 || { echo >&2 "${RED}You must install 'spirv-tools' from Homebrew.${NC}"; exit 1; }
+    brew --prefix libclc >/dev/null 2>&1 || { echo >&2 "${RED}You must install 'libclc' from Homebrew (brew install libclc).${NC}"; exit 1; }
     command -v python3 >/dev/null 2>&1 || { echo >&2 "${RED}You must install 'python3' on your host machine.${NC}"; exit 1; }
     python_module_test six >/dev/null 2>&1 || { echo >&2 "${RED}'six' not found in your Python 3 installation.${NC}"; exit 1; }
     python_module_test pyparsing >/dev/null 2>&1 || { echo >&2 "${RED}'pyparsing' not found in your Python 3 installation.${NC}"; exit 1; }
@@ -223,6 +226,7 @@ generate_meson_cross() {
     echo "# Automatically generated - do not modify" > $cross
     echo "[properties]" >> $cross
     echo "needs_exe_wrapper = true" >> $cross
+    echo "pkg_config_path = ['$(brew --prefix libclc)/lib/pkgconfig', '$(brew --prefix libclc)/share/pkgconfig', '/opt/homebrew/lib/pkgconfig', '/opt/homebrew/share/pkgconfig']" >> $cross
     echo "[built-in options]" >> $cross
     echo "c_args = [${CFLAGS:+$(meson_quote $CFLAGS)}]" >> $cross
     echo "cpp_args = [${CXXFLAGS:+$(meson_quote $CXXFLAGS)}]" >> $cross
@@ -236,7 +240,8 @@ generate_meson_cross() {
     echo "objc = [$(meson_quote $OBJCC)]" >> $cross
     echo "ar = [$(meson_quote $AR)]" >> $cross
     echo "nm = [$(meson_quote $NM)]" >> $cross
-    echo "pkgconfig = ['$PREFIX/host/bin/pkg-config']" >> $cross
+    echo "pkgconfig = ['/opt/homebrew/bin/pkg-config']" >> $cross
+    echo "llvm-config = ['$(brew --prefix llvm)/bin/llvm-config']" >> $cross
     echo "ranlib = [$(meson_quote $RANLIB)]" >> $cross
     echo "strip = [$(meson_quote $STRIP), '-x']" >> $cross
     echo "python = ['$(which python3)']" >> $cross
@@ -412,12 +417,14 @@ build_pkg_config() {
     cd "$DIR"
     if [ -z "$REBUILD" ]; then
         echo "${GREEN}Configuring ${NAME}...${NC}"
-        env -i CFLAGS="-Wno-error=int-conversion" ./configure --prefix="$PREFIX" --bindir="$PREFIX/host/bin" --with-internal-glib $@
+        env -i CFLAGS="-Wno-error=int-conversion" ./configure --prefix="$PREFIX" --bindir="$PREFIX/host/bin" --with-internal-glib --enable-pkg-config $@
     fi
     echo "${GREEN}Building ${NAME}...${NC}"
     make -j$NCPU
     echo "${GREEN}Installing ${NAME}...${NC}"
     make install
+    # Create pkg-config symlink for compatibility
+    ln -sf "$PREFIX/host/bin/pkgconf" "$PREFIX/host/bin/pkg-config"
     cd "$pwd"
 
     export PATH="$PREFIX/host/bin:$PATH"
@@ -524,6 +531,10 @@ build () {
     cd "$DIR"
     if [ -z "$REBUILD" ]; then
         echo "${GREEN}Configuring ${NAME}...${NC}"
+        # Include both locally built packages ($PREFIX) and homebrew packages
+        # Use homebrew pkg-config for configure (old built one is buggy)
+        PATH="/opt/homebrew/bin:$PATH" \
+        PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig" \
         ./configure --prefix="$PREFIX" --host="$CHOST" $@
     fi
     echo "${GREEN}Building ${NAME}...${NC}"
@@ -560,6 +571,10 @@ meson_cross_build () {
     if [ -z "$REBUILD" ]; then
         rm -rf utm_build
         echo "${GREEN}Configuring ${NAME}...${NC}"
+        # Include libclc, homebrew, and $PREFIX paths for locally built packages
+        export PKG_CONFIG_PATH="$(brew --prefix libclc)/lib/pkgconfig:$(brew --prefix libclc)/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:$PREFIX/host/lib/pkgconfig:$PREFIX/host/share/pkgconfig:$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
+        # Use homebrew pkg-config for meson (old built one is buggy), and include LLVM for llvm-config
+        PATH="$(brew --prefix llvm)/bin:/opt/homebrew/bin:$PATH" \
         meson utm_build --prefix="$PREFIX" --buildtype="$buildtype" --cross-file "$MESON_CROSS" "$@"
     fi
     echo "${GREEN}Building ${NAME}...${NC}"
@@ -620,10 +635,12 @@ cmake_build () {
 
 build_angle () {
     OLD_PATH=$PATH
-    export PATH="$(realpath "$BUILD_DIR/depot_tools.git"):$OLD_PATH"
+    if [ -d "$BUILD_DIR/depot_tools.git" ]; then
+        export PATH="$(realpath "$BUILD_DIR/depot_tools.git"):$OLD_PATH"
+    fi
     pwd="$(pwd)"
     cd "$BUILD_DIR/WebKit.git/Source/ThirdParty/ANGLE"
-    env -i PATH=$PATH xcodebuild archive -archivePath "ANGLE" \
+    env -i PATH="$PATH" xcodebuild archive -archivePath "ANGLE" \
                                          -scheme "ANGLE" \
                                          -sdk $SDK \
                                          -arch $ARCH \
@@ -641,12 +658,14 @@ build_angle () {
     rsync -a "ANGLE.xcarchive/Products/usr/local/lib/" "$PREFIX/lib"
     rsync -a "include/" "$PREFIX/include"
     cd "$pwd"
-    export PATH=$OLD_PATH
+    export PATH="$OLD_PATH"
 }
 
 build_hypervisor () {
     OLD_PATH=$PATH
-    export PATH="$(realpath "$BUILD_DIR/depot_tools.git"):$OLD_PATH"
+    if [ -d "$BUILD_DIR/depot_tools.git" ]; then
+        export PATH="$(realpath "$BUILD_DIR/depot_tools.git"):$OLD_PATH"
+    fi
     pwd="$(pwd)"
     cd "$BUILD_DIR/Hypervisor.git"
 
@@ -660,11 +679,11 @@ build_hypervisor () {
     esac
 
     echo "${GREEN}Building Hypervisor...${NC}"
-    env -i PATH=$PATH xcodebuild archive -archivePath "Hypervisor" -scheme "$scheme" -sdk $SDK -configuration "$BUILD_CONFIGURATION"
+    env -i PATH="$PATH" xcodebuild archive -archivePath "Hypervisor" -scheme "$scheme" -sdk $SDK -configuration "$BUILD_CONFIGURATION"
 
     rsync -a "Hypervisor.xcarchive/Products/Library/Frameworks/" "$PREFIX/Frameworks"
     cd "$pwd"
-    export PATH=$OLD_PATH
+    export PATH="$OLD_PATH"
 }
 
 build_qemu_dependencies () {
@@ -714,7 +733,7 @@ build_spice_client () {
     build $XML2_SRC --enable-shared=no --without-python
     meson_build $SOUP_SRC -Dsysprof=disabled -Dtls_check=false -Dintrospection=disabled
     meson_build $PHODAV_SRC
-    meson_build $SPICE_CLIENT_SRC -Dcoroutine=libucontext
+    meson_build $SPICE_CLIENT_SRC -Dcoroutine=libucontext -Dintrospection=disabled
 }
 
 patch_vulkan_icd() {
@@ -758,8 +777,8 @@ build_moltenvk() {
         MVK_PLATFORM="macos"
         ;;
     esac
-    env -i PATH=$PATH HOME=$HOME LANG=en_US.UTF-8 ./fetchDependencies --$MVK_PLATFORM -v
-    env -i PATH=$PATH HOME=$HOME LANG=en_US.UTF-8 make $MVK_PLATFORM$DEBUG_FLAGS
+    env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 ./fetchDependencies --$MVK_PLATFORM -v
+    env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 make $MVK_PLATFORM$DEBUG_FLAGS
     if [ "$PLATFORM" == "macos" ]; then
         $(xcrun --sdk $SDK --find lipo) "Package/$BUILD_CONFIGURATION/MoltenVK/dylib/macOS/libMoltenVK.dylib" -extract $ARCH -output "$PREFIX/lib/libMoltenVK.dylib"
     else
@@ -772,11 +791,11 @@ build_moltenvk() {
 build_mesa_host () {
     pushd "$BUILD_DIR/mesa.git"
 
-    HOST_PATH="$(brew --prefix llvm)/bin:$CLEAN_PATH"
-    env -i PATH="$HOST_PATH" \
+    HOST_PATH="$(brew --prefix llvm)/bin:/opt/homebrew/bin:$CLEAN_PATH"
+    env -i PATH="$HOST_PATH" PKG_CONFIG="/opt/homebrew/bin/pkg-config" PKG_CONFIG_PATH="$(brew --prefix libclc)/lib/pkgconfig:$(brew --prefix libclc)/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig" \
         meson host_build --prefix="$PREFIX/host" --buildtype=release \
         -Dllvm=auto -Dstrip=true -Dopengl=false -Dgallium-drivers= -Dvulkan-drivers= \
-        -Dmesa-clc=auto -Dplatforms= -Dglx=disabled -Degl=disabled -Dgbm=disabled
+        -Dmesa-clc=enabled -Dinstall-mesa-clc=true -Dplatforms= -Dglx=disabled -Degl=disabled -Dgbm=disabled
     env -i PATH="$HOST_PATH" meson compile -C host_build -j $NCPU
     env -i PATH="$HOST_PATH" meson install -C host_build
 
@@ -786,7 +805,7 @@ build_mesa_host () {
 build_vulkan_drivers () {
     mkdir -p "$PREFIX/share/vulkan/icd.d"
     build_mesa_host
-    meson_darwin_build $MESA_REPO -Dgallium-drivers= -Dvulkan-drivers=kosmickrisp -Dplatforms=macos
+    meson_darwin_build $MESA_REPO -Dgallium-drivers= -Dvulkan-drivers=kosmickrisp -Dplatforms=macos -Dmesa-clc=system
     patch_vulkan_icd "$PREFIX/share/vulkan/icd.d/kosmickrisp_mesa_icd.$ARCH.json"
     mv "$PREFIX/share/vulkan/icd.d/kosmickrisp_mesa_icd.$ARCH.json" "$PREFIX/share/vulkan/icd.d/kosmickrisp_mesa_icd.json"
     build_moltenvk
@@ -1074,12 +1093,13 @@ CFLAGS="$CFLAGS -arch $ARCH -isysroot $SDKROOT -I$PREFIX/include -F$PREFIX/Frame
 CPPFLAGS="$CPPFLAGS -arch $ARCH -isysroot $SDKROOT -I$PREFIX/include -F$PREFIX/Frameworks $CFLAGS_TARGET $DEBUG_FLAGS"
 CXXFLAGS="$CXXFLAGS -arch $ARCH -isysroot $SDKROOT -I$PREFIX/include -F$PREFIX/Frameworks $CFLAGS_TARGET $DEBUG_FLAGS"
 OBJCFLAGS="$OBJCFLAGS -arch $ARCH -isysroot $SDKROOT -I$PREFIX/include -F$PREFIX/Frameworks $CFLAGS_TARGET $DEBUG_FLAGS"
-LDFLAGS="$LDFLAGS -arch $ARCH -isysroot $SDKROOT -L$PREFIX/lib -F$PREFIX/Frameworks $CFLAGS_TARGET $DEBUG_FLAGS"
+LDFLAGS="$LDFLAGS -arch $ARCH -isysroot $SDKROOT -L$PREFIX/lib -L/opt/homebrew/lib -F$PREFIX/Frameworks $CFLAGS_TARGET $DEBUG_FLAGS"
 export CFLAGS
 export CPPFLAGS
 export CXXFLAGS
 export OBJCFLAGS
 export LDFLAGS
+export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
 
 check_env
 echo "${GREEN}Starting build for ${PLATFORM_FAMILY_NAME} ${ARCH} [${NCPU} jobs]${NC}"

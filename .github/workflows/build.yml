@@ -74,7 +74,7 @@ jobs:
           echo "/usr/local/opt/bison/bin:/opt/homebrew/opt/bison/bin" >> $GITHUB_PATH
       - name: Install Build Tools
         run: |
-          brew install bison pkg-config gettext glib-utils libgpg-error nasm meson cmake 2>/dev/null || true
+          brew install bison pkg-config gettext glib-utils libgpg-error nasm meson cmake libclc spirv-llvm-translator spirv-tools 2>/dev/null || true
           rm -f /usr/local/lib/pkgconfig/*.pc
       - name: Install Python Requirements
         run: |
@@ -134,7 +134,7 @@ jobs:
           echo "/usr/local/opt/bison/bin:/opt/homebrew/opt/bison/bin" >> $GITHUB_PATH
       - name: Install Build Tools
         run: |
-          brew install bison pkg-config gettext glib-utils libgpg-error nasm meson cmake 2>/dev/null || true
+          brew install bison pkg-config gettext glib-utils libgpg-error nasm meson cmake libclc spirv-llvm-translator spirv-tools 2>/dev/null || true
           rm -f /usr/local/lib/pkgconfig/*.pc
       - name: Install Python Requirements
         run: |
@@ -209,7 +209,7 @@ jobs:
           echo "/usr/local/opt/bison/bin:/opt/homebrew/opt/bison/bin" >> $GITHUB_PATH
       - name: Install Build Tools
         run: |
-          brew install bison pkg-config gettext glib-utils libgpg-error nasm meson cmake 2>/dev/null || true
+          brew install bison pkg-config gettext glib-utils libgpg-error nasm meson cmake libclc spirv-llvm-translator spirv-tools 2>/dev/null || true
           rm -f /usr/local/lib/pkgconfig/*.pc
       - name: Install Python Requirements
         run: |
